@@ -1,0 +1,18 @@
+[package]
+name = "gpu-video-egui-player"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[dependencies]
+gpu-video = { version = "0.5.0", features = ["wgpu"] }
+eframe = "0.37.0"
+egui-wgpu = "0.37.0"
+rfd = "0.17.2"
+mp4 = "0.14"
+pollster = "0.3.0"
+tracing-subscriber = "0.3.20"
+
+[lints.clippy]
+todo = "warn"
+uninlined_format_args = "warn"

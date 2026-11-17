@@ -1,0 +1,26 @@
+[package]
+name = "gpu-video-slint-player"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[dependencies]
+gpu-video = { version = "0.5.0", features = ["wgpu"] }
+slint = { version = "1.19.0", default-features = false, features = [
+    "std",
+    "backend-winit",
+    "renderer-femtovg-wgpu",
+    "compat-1-2",
+    "unstable-wgpu-30",
+] }
+rfd = "0.17.2"
+mp4 = "0.14"
+pollster = "0.3.0"
+tracing-subscriber = "0.3.20"
+
+[build-dependencies]
+slint-build = "1.19.0"
+
+[lints.clippy]
+todo = "warn"
+uninlined_format_args = "warn"

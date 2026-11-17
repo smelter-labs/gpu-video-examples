@@ -1,0 +1,66 @@
+name: Rust - check
+on:
+    workflow_dispatch: {}
+    push:
+        branches: [master]
+    pull_request:
+        types: [opened, synchronize]
+    schedule:
+        - cron: "0 1 * * 1"
+
+concurrency:
+    group: ${{ github.workflow }}-${{ github.ref }}
+    cancel-in-progress: ${{ github.ref != 'refs/heads/master' }}
+
+jobs:
+    build_and_lint:
+        strategy:
+            fail-fast: false
+            matrix:
+                os: [ubuntu-24.04, macos-15]
+                project: [egui-player, slint-player]
+        runs-on: ${{ matrix.os }}
+        defaults:
+            run:
+                working-directory: ${{ matrix.project }}
+        steps:
+            - name: 🛠 Install system dependencies
+              if: runner.os == 'Linux'
+              run: |
+                  set -e
+                  sudo apt-get update -y -qq
+                  sudo apt-get install -y pkg-config libfontconfig1-dev libudev-dev libxkbcommon-dev libwayland-dev
+                  sudo apt-get clean
+                  sudo rm -rf /var/lib/apt/lists/*
+
+            - name: 🔧 Install the rust toolchain
+              uses: dtolnay/rust-toolchain@stable
+              with:
+                  toolchain: 1.98
+                  components: rustfmt, clippy
+
+            - name: 📥 Checkout repo
+              uses: actions/checkout@v6
+
+            - name: 📅 Compute cache week
+              id: cache_week
+              run: echo "week=$(date -u +%G-W%V)" >> "$GITHUB_OUTPUT"
+
+            - name: 📁 Rust cache
+              uses: Swatinem/rust-cache@v2
+              with:
+                  workspaces: ${{ matrix.project }}
+                  shared-key: "${{ matrix.os }}-${{ matrix.project }}-${{ steps.cache_week.outputs.week }}"
+                  save-if: ${{ github.ref == 'refs/heads/master' }}
+
+            - name: 🔒 Check Cargo.lock is up to date
+              run: cargo metadata --locked --format-version 1 > /dev/null
+
+            - name: 🛠 Cargo build
+              run: cargo build --locked
+
+            - name: 📖 Check formatting
+              run: cargo fmt --all --check
+
+            - name: 📎 Run clippy
+              run: cargo clippy --locked --all-targets -- -D warnings

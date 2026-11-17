@@ -1,0 +1,55 @@
+import { Button } from "std-widgets.slint";
+
+export component AppWindow inherits Window {
+    title: "gpu-video slint player";
+    preferred-width: 1280px;
+    preferred-height: 720px;
+    background: black;
+
+    in property <image> frame;
+    in property <bool> paused;
+    in property <string> status;
+
+    callback open-file();
+    callback toggle-pause();
+
+    Image {
+        width: 100%;
+        height: 100%;
+        source: root.frame;
+        image-fit: contain;
+    }
+
+    Rectangle {
+        x: 10px;
+        y: parent.height - self.height - 10px;
+        width: self.preferred-width;
+        height: self.preferred-height;
+        background: #00000099;
+
+        HorizontalLayout {
+            padding: 10px;
+            spacing: 10px;
+
+            Button {
+                text: "Open";
+                clicked => {
+                    root.open-file();
+                }
+            }
+
+            Button {
+                text: root.paused ? "Play" : "Pause";
+                clicked => {
+                    root.toggle-pause();
+                }
+            }
+
+            Text {
+                text: root.status;
+                color: white;
+                vertical-alignment: center;
+            }
+        }
+    }
+}
