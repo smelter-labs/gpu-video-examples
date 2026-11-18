@@ -7,7 +7,9 @@ use gpu_video::{VideoAdapterExt, parameters::VideoDeviceDescriptor};
 use playback::Playback;
 use video_view::VideoView;
 
+#[path = "../../shared/demuxer.rs"]
 mod demuxer;
+#[path = "../../shared/playback.rs"]
 mod playback;
 mod video_view;
 
