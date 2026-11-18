@@ -1,13 +1,8 @@
-use std::{
-    cell::RefCell,
-    path::Path,
-    rc::Rc,
-    time::{Duration, Instant},
-};
+use std::{cell::RefCell, path::Path, rc::Rc, time::Instant};
 
 use gpu_video::{VideoAdapterExt, parameters::VideoDeviceDescriptor};
 use slint::{
-    ComponentHandle, Timer, TimerMode,
+    ComponentHandle, RenderingState,
     wgpu_30::{WGPUConfiguration, wgpu},
 };
 
@@ -15,7 +10,9 @@ use playback::Playback;
 use ui::AppWindow;
 use video_view::VideoView;
 
+#[path = "../../shared/demuxer.rs"]
 mod demuxer;
+#[path = "../../shared/playback.rs"]
 mod playback;
 mod video_view;
 
@@ -23,8 +20,6 @@ mod video_view;
 mod ui {
     slint::include_modules!();
 }
-
-const PLAYBACK_TICK_INTERVAL: Duration = Duration::from_millis(4);
 
 struct Player {
     device: wgpu::Device,
@@ -50,6 +45,15 @@ impl Player {
     fn open_file(&mut self, path: &Path) {
         self.playback = Some(Playback::new(&self.device, &self.queue, path));
         self.last_tick = Instant::now();
+    }
+
+    fn toggle_pause(&mut self) {
+        self.paused = !self.paused;
+        self.last_tick = Instant::now();
+    }
+
+    fn is_playing(&self) -> bool {
+        !self.paused && self.playback.is_some()
     }
 
     fn advance_playback(&mut self, window: &AppWindow) {
@@ -112,12 +116,14 @@ fn main() {
 
     window.on_open_file({
         let player = player.clone();
+        let window = window.as_weak();
         move || {
             let picked = rfd::FileDialog::new()
                 .add_filter("MP4", &["mp4"])
                 .pick_file();
             if let Some(path) = picked {
                 player.borrow_mut().open_file(&path);
+                window.unwrap().window().request_redraw();
             }
         }
     });
@@ -127,18 +133,30 @@ fn main() {
         let window = window.as_weak();
         move || {
             let mut player = player.borrow_mut();
-            player.paused = !player.paused;
-            window.unwrap().set_paused(player.paused);
+            player.toggle_pause();
+            let window = window.unwrap();
+            window.set_paused(player.paused);
+            window.window().request_redraw();
         }
     });
 
-    let playback_timer = Timer::default();
-    playback_timer.start(TimerMode::Repeated, PLAYBACK_TICK_INTERVAL, {
-        let window = window.as_weak();
-        move || {
-            player.borrow_mut().advance_playback(&window.unwrap());
-        }
-    });
+    window
+        .window()
+        .set_rendering_notifier({
+            let window = window.as_weak();
+            move |state, _| {
+                let RenderingState::BeforeRendering = state else {
+                    return;
+                };
+                let window = window.unwrap();
+                let mut player = player.borrow_mut();
+                player.advance_playback(&window);
+                if player.is_playing() {
+                    window.window().request_redraw();
+                }
+            }
+        })
+        .unwrap();
 
     window.run().unwrap();
 }
